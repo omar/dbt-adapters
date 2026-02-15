@@ -391,11 +391,15 @@ class TestSparkAdapter(unittest.TestCase):
 
     def test_relation_with_database(self):
         adapter = SparkAdapter(self.target_http, get_context("spawn"))
-        # fine
-        adapter.Relation.create(schema="different", identifier="table")
-        with self.assertRaises(DbtRuntimeError):
-            # not fine - database set
-            adapter.Relation.create(database="something", schema="different", identifier="table")
+        # two-part name: schema.identifier
+        relation = adapter.Relation.create(schema="different", identifier="table")
+        assert relation.render() == "different.table"
+
+        # three-part name: database.schema.identifier
+        relation = adapter.Relation.create(
+            database="catalog", schema="different", identifier="table"
+        )
+        assert relation.render() == "catalog.different.table"
 
     def test_profile_with_database(self):
         profile = {
