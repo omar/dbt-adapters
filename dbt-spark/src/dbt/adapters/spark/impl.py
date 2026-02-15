@@ -201,6 +201,7 @@ class SparkAdapter(SQLAdapter):
         self,
         row_list: "agate.Table",
         relation_info_func: Callable[["agate.Row"], RelationInfo],
+        schema_relation: Optional[BaseRelation] = None,
     ) -> List[BaseRelation]:
         """Aggregate relations with format metadata included."""
         relations = []
@@ -217,6 +218,7 @@ class SparkAdapter(SQLAdapter):
             is_iceberg: bool = "Provider: iceberg" in information
 
             relation: BaseRelation = self.Relation.create(
+                database=schema_relation.database if schema_relation else None,
                 schema=_schema,
                 identifier=name,
                 type=rel_type,
@@ -241,6 +243,7 @@ class SparkAdapter(SQLAdapter):
             return self._build_spark_relation_list(
                 row_list=show_table_extended_rows,
                 relation_info_func=self._get_relation_information,
+                schema_relation=schema_relation,
             )
         except DbtRuntimeError as e:
             errmsg = getattr(e, "msg", "")
@@ -258,6 +261,7 @@ class SparkAdapter(SQLAdapter):
                     return self._build_spark_relation_list(
                         row_list=show_table_rows,
                         relation_info_func=self._get_relation_information_using_describe,
+                        schema_relation=schema_relation,
                     )
                 except DbtRuntimeError as e:
                     description = "Error while retrieving information about"
@@ -270,9 +274,6 @@ class SparkAdapter(SQLAdapter):
                 return []
 
     def get_relation(self, database: str, schema: str, identifier: str) -> Optional[BaseRelation]:
-        if not self.Relation.get_default_include_policy().database:
-            database = None  # type: ignore
-
         return super().get_relation(database, schema, identifier)
 
     def parse_describe_extended(
